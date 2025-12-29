@@ -4,10 +4,9 @@ import { UIManager } from './UIManager.js';
 
 const socket = io();
 const renderer = new ThreeRenderer('game-container');
-const uiManager = new UIManager();
-let inputManager; // Store reference
+const uiManager = new UIManager(socket); // Pass socket
+let inputManager; 
 
-// --- Start Screen Logic ---
 const btnPvE = document.getElementById('btn-pve');
 const btnPvP = document.getElementById('btn-pvp');
 
@@ -23,8 +22,6 @@ btnPvP.addEventListener('click', () => {
     socket.emit('joinGame', { mode: 'pvp' });
 });
 
-// --- Game Events ---
-
 socket.on('statusUpdate', (msg) => {
     uiManager.setStatus(msg);
 });
@@ -33,18 +30,15 @@ socket.on('gameStart', (initialState) => {
     uiManager.setStatus('SYSTEM: ONLINE');
     uiManager.showNotification("Match Started");
 
-    // Pass player info to renderer so it knows colors
     renderer.setPlayerInfo(initialState.players, socket.id);
-    
     renderer.initMap(initialState.grid);
     renderer.updateGameState(initialState.grid); 
     renderer.animate();
     
-    // Initialize UI Stats immediately
     uiManager.update(initialState, socket.id);
 
-    // Initialize Input
-    inputManager = new InputManager(renderer, socket);
+    // Pass uiManager to InputManager
+    inputManager = new InputManager(renderer, socket, uiManager);
 });
 
 socket.on('stateUpdate', (newState) => {
@@ -55,7 +49,7 @@ socket.on('stateUpdate', (newState) => {
 socket.on('error', (err) => {
     console.error("Game Error:", err);
     uiManager.showError(err);
-    if(inputManager) inputManager.resetSelection(); // Reset if move failed
+    if(inputManager) inputManager.resetSelection();
 });
 
 socket.on('gameOver', (data) => {

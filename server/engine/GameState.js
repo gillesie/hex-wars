@@ -16,7 +16,6 @@ class GameState {
     }
 
     initBoard(p1Id, p2Id) {
-        // Player 1 (Blue) - South
         const start1 = this.grid.getTile(0, 4);
         if (start1) {
             start1.owner = p1Id;
@@ -24,7 +23,6 @@ class GameState {
             start1.unit = new Unit('Vanguard', p1Id);
         }
 
-        // Player 2 (Red) - North
         const start2 = this.grid.getTile(0, -4);
         if (start2) {
             start2.owner = p2Id;
@@ -33,12 +31,19 @@ class GameState {
         }
     }
 
-    // Called by the game loop
     tick() {
-        // Economy Logic
         Object.values(this.players).forEach(player => {
-            // Simple Income Addition (Refine logic in Player.js if needed)
-            player.essence += player.income;
+            // Base Income
+            let currentIncome = player.income;
+
+            // Add income from Monoliths
+            for (let tile of this.grid.tiles.values()) {
+                if (tile.owner === player.id && tile.type === 'monolith') {
+                    currentIncome += 5; // Monoliths give +5
+                }
+            }
+
+            player.essence += currentIncome;
         });
     }
 
@@ -50,7 +55,33 @@ class GameState {
 
         if (action.type === 'MOVE') {
             return this.moveUnit(playerId, action.from, action.to);
+        } else if (action.type === 'BUILD') {
+            return this.buildStructure(playerId, action);
         }
+
+        return { success: true };
+    }
+
+    buildStructure(playerId, action) {
+        const { structure, q, r } = action;
+        const tile = this.grid.getTile(q, r);
+        const player = this.players[playerId];
+
+        if (!tile) return { error: "Invalid tile" };
+        if (tile.owner !== playerId) return { error: "You do not own this tile" };
+        if (tile.unit) return { error: "Tile is occupied" };
+        if (tile.type !== 'empty') return { error: "Already built here" };
+
+        let cost = 0;
+        if (structure === 'monolith') cost = 50;
+        if (structure === 'bastion') cost = 80;
+
+        if (player.essence < cost) return { error: "Insufficient Essence" };
+
+        // Execute Build
+        player.essence -= cost;
+        tile.type = structure;
+
         return { success: true };
     }
 
@@ -60,7 +91,6 @@ class GameState {
 
         if (!startTile || !endTile) return { error: "Invalid coordinates" };
         
-        // Ownership Check
         if (!startTile.unit || startTile.unit.owner !== playerId) {
             return { error: "Not your unit" };
         }
@@ -70,11 +100,9 @@ class GameState {
         const isNeighbor = this.grid.getNeighbors(from.q, from.r).includes(endTile);
         if (!isNeighbor) return { error: "Tile not adjacent" };
 
-        // Execute Move
         endTile.unit = startTile.unit;
         startTile.unit = null;
         
-        // Capture/Territory Logic
         if (endTile.owner !== playerId && endTile.type !== 'nexus') {
             endTile.owner = playerId; 
         }

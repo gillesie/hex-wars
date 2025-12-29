@@ -13,10 +13,10 @@
         /* HUD Elements */
         .hud-panel {
             position: absolute;
-            background: rgba(20, 20, 30, 0.85);
+            background: rgba(20, 20, 30, 0.90);
             border: 1px solid #444;
             backdrop-filter: blur(5px);
-            padding: 10px 20px;
+            padding: 15px;
             border-radius: 4px;
             color: #fff;
             pointer-events: auto;
@@ -28,6 +28,30 @@
 
         #top-bar { top: 20px; left: 20px; display: flex; gap: 20px; }
         #status-bar { top: 20px; right: 20px; text-align: right; color: #00dfff; }
+
+        /* Action Panel (New) */
+        #action-panel {
+            bottom: 20px;
+            right: 20px;
+            width: 300px;
+            display: none; /* Hidden by default */
+            flex-direction: column;
+            gap: 10px;
+            border-right: 4px solid #00dfff;
+        }
+
+        .action-btn {
+            background: rgba(0, 223, 255, 0.1);
+            border: 1px solid #00dfff;
+            color: #00dfff;
+            padding: 10px;
+            cursor: pointer;
+            font-family: 'Orbitron', sans-serif;
+            transition: all 0.2s;
+            text-align: left;
+        }
+        .action-btn:hover { background: #00dfff; color: #000; }
+        .action-btn:disabled { border-color: #555; color: #555; cursor: not-allowed; background: transparent; }
 
         /* Start Screen */
         #start-screen {
@@ -103,6 +127,12 @@
         <div id="status-bar" class="hud-panel">
             <div id="status">Initializing...</div>
         </div>
+        
+        <div id="action-panel" class="hud-panel">
+            <h3 id="panel-title">SECTOR 0,0</h3>
+            <div id="panel-content"></div>
+        </div>
+
         <div id="notification-container"></div>
     </div>
 

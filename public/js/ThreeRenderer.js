@@ -1,5 +1,6 @@
 export class ThreeRenderer {
     constructor(containerId) {
+        // ... (Constructor same as before) ...
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0x111115); 
 
@@ -12,22 +13,21 @@ export class ThreeRenderer {
         this.renderer.shadowMap.enabled = true;
         document.getElementById(containerId).appendChild(this.renderer.domElement);
 
-        // Lights
         const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
         dirLight.position.set(10, 20, 10);
         dirLight.castShadow = true;
         this.scene.add(dirLight);
         this.scene.add(new THREE.AmbientLight(0x404050)); 
 
-        this.hexMeshes = new Map();
+        this.hexMeshes = new Map(); // Map<ID, Mesh>
+        this.gridDataCache = new Map(); // NEW: Cache the logical tile data
         this.playerColors = {}; 
         
-        // Selection Indicator (A glowing ring)
         const selectorGeo = new THREE.TorusGeometry(1, 0.1, 8, 6);
         const selectorMat = new THREE.MeshBasicMaterial({ color: 0xffff00, transparent: true, opacity: 0.8 });
         this.selectorMesh = new THREE.Mesh(selectorGeo, selectorMat);
         this.selectorMesh.rotation.x = Math.PI / 2;
-        this.selectorMesh.visible = false; // Hidden by default
+        this.selectorMesh.visible = false; 
         this.scene.add(this.selectorMesh);
     }
 
@@ -71,7 +71,6 @@ export class ThreeRenderer {
             this.selectorMesh.visible = false;
             return;
         }
-
         const size = 1.1;
         const x = size * 1.5 * tileData.q;
         const z = size * Math.sqrt(3) * (tileData.r + tileData.q / 2);
@@ -80,8 +79,16 @@ export class ThreeRenderer {
         this.selectorMesh.visible = true;
     }
 
+    // NEW helper to retrieve logic state for InputManager
+    getTileData(q, r) {
+        return this.gridDataCache.get(`${q},${r}`);
+    }
+
     updateGameState(gridData) {
+        // Sync Visuals AND Cache Data
         gridData.forEach(tile => {
+            this.gridDataCache.set(tile.id, tile); // Update Cache
+
             const mesh = this.hexMeshes.get(tile.id);
             if (!mesh) return;
 
@@ -89,6 +96,14 @@ export class ThreeRenderer {
 
             if (tile.owner && this.playerColors[tile.owner]) {
                 color = this.playerColors[tile.owner];
+            }
+
+            // Visual difference for structures
+            if (tile.type === 'monolith') {
+                 // Slight purple tint for monoliths
+                 mesh.scale.y = 1.5; // Make them taller
+            } else if (tile.type === 'bastion') {
+                 mesh.scale.y = 1.2;
             }
 
             if (tile.unit) {
