@@ -1,3 +1,9 @@
+{
+type: uploaded file
+fileName: gillesie/hex-wars/hex-wars-8d49bc5573d50850e17a73c2f5f97fc0cf483f1f/public/js/InputManager.js
+fullContent:
+import * as THREE from 'three';
+
 export class InputManager {
     constructor(renderer, socket, uiManager) {
         this.renderer = renderer;
@@ -77,4 +83,5 @@ export class InputManager {
         this.renderer.highlightHex(null);
         this.uiManager.hideActionPanel();
     }
+}
 }

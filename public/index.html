@@ -1,3 +1,7 @@
+{
+type: uploaded file
+fileName: gillesie/hex-wars/hex-wars-8d49bc5573d50850e17a73c2f5f97fc0cf483f1f/public/index.html
+fullContent:
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -110,6 +114,15 @@
 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     </style>
+    
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
 </head>
 <body>
     
@@ -139,8 +152,8 @@
     <div id="game-container"></div>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     
     <script type="module" src="js/main.js"></script>
 </body>
 </html>
+}
