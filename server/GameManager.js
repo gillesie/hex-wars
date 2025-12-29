@@ -8,6 +8,7 @@ class GameManager {
         this.games = new Map(); // matchId -> GameState
         this.players = new Map(); // socketId -> { matchId, playerId }
         this.waitingPlayer = null; // Socket for PvP queue
+        this.intervals = new Map(); // matchId -> IntervalID
     }
 
     handleJoin(socket, mode) {
@@ -30,6 +31,9 @@ class GameManager {
 
         socket.join(matchId);
         socket.emit('gameStart', game.serialize());
+        
+        // Start the Game Loop
+        this.startGameLoop(matchId);
     }
 
     findPvPGame(socket) {
@@ -52,11 +56,40 @@ class GameManager {
 
             // Notify start
             this.io.to(matchId).emit('gameStart', game.serialize());
+            
+            // Start the Game Loop
+            this.startGameLoop(matchId);
         } else {
             // No one waiting, set as waiting
             this.waitingPlayer = socket;
             socket.emit('statusUpdate', 'Waiting for opponent...');
         }
+    }
+
+    startGameLoop(matchId) {
+        // Run logic every 1 second (1000ms)
+        const intervalId = setInterval(() => {
+            const game = this.games.get(matchId);
+            if (!game || game.status !== 'active') {
+                clearInterval(intervalId);
+                this.intervals.delete(matchId);
+                return;
+            }
+
+            // 1. Process Economy (every tick)
+            game.tick();
+
+            // 2. AI Turn (if PvE)
+            if (game.aiAgent) {
+                game.aiAgent.decideMove();
+            }
+
+            // 3. Emit State Update
+            this.io.to(matchId).emit('stateUpdate', game.serialize());
+
+        }, 1000);
+
+        this.intervals.set(matchId, intervalId);
     }
 
     handleAction(socket, actionData) {
@@ -70,15 +103,8 @@ class GameManager {
         const result = game.processAction(socket.id, actionData);
         
         if (result.success) {
+            // Immediate update for responsiveness
             this.io.to(playerData.matchId).emit('stateUpdate', game.serialize());
-
-            // If PvE, trigger AI response
-            if (game.aiAgent) {
-                setTimeout(() => {
-                    game.aiAgent.decideMove();
-                    this.io.to(playerData.matchId).emit('stateUpdate', game.serialize());
-                }, 1000); // Artificial delay for "thinking"
-            }
         } else {
             socket.emit('error', result.error);
         }
@@ -91,7 +117,13 @@ class GameManager {
             if (game) {
                 game.status = 'finished';
                 this.io.to(playerData.matchId).emit('gameOver', { reason: 'Opponent disconnected' });
+                
+                // Cleanup
                 this.games.delete(playerData.matchId);
+                if (this.intervals.has(playerData.matchId)) {
+                    clearInterval(this.intervals.get(playerData.matchId));
+                    this.intervals.delete(playerData.matchId);
+                }
             }
             this.players.delete(socket.id);
         }

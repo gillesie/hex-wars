@@ -1,18 +1,17 @@
 const HexGrid = require('./HexGrid');
-const Unit = require('./Unit'); // Required to spawn starting units
+const Unit = require('./Unit'); 
 
 class GameState {
     constructor(matchId, p1Id, p2Id) {
         this.matchId = matchId;
         this.players = {
-            [p1Id]: { id: p1Id, side: 'Blue', essence: 100, nexusHealth: 1000 },
-            [p2Id]: { id: p2Id, side: 'Red', essence: 100, nexusHealth: 1000 }
+            [p1Id]: { id: p1Id, side: 'Blue', essence: 100, nexusHealth: 1000, income: 10, units: [] },
+            [p2Id]: { id: p2Id, side: 'Red', essence: 100, nexusHealth: 1000, income: 10, units: [] }
         };
-        this.grid = new HexGrid(4); // Map radius 4
+        this.grid = new HexGrid(4); 
         this.turn = 0;
         this.status = 'active'; 
         
-        // Initialize Starting Positions (Nexus + 1 Unit)
         this.initBoard(p1Id, p2Id);
     }
 
@@ -32,6 +31,15 @@ class GameState {
             start2.type = 'nexus';
             start2.unit = new Unit('Vanguard', p2Id);
         }
+    }
+
+    // Called by the game loop
+    tick() {
+        // Economy Logic
+        Object.values(this.players).forEach(player => {
+            // Simple Income Addition (Refine logic in Player.js if needed)
+            player.essence += player.income;
+        });
     }
 
     processAction(playerId, action) {
@@ -66,7 +74,7 @@ class GameState {
         endTile.unit = startTile.unit;
         startTile.unit = null;
         
-        // Update Owner of tile if moved to neutral/enemy (Simple capture logic)
+        // Capture/Territory Logic
         if (endTile.owner !== playerId && endTile.type !== 'nexus') {
             endTile.owner = playerId; 
         }

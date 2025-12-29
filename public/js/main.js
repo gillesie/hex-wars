@@ -5,6 +5,7 @@ import { UIManager } from './UIManager.js';
 const socket = io();
 const renderer = new ThreeRenderer('game-container');
 const uiManager = new UIManager();
+let inputManager; // Store reference
 
 // --- Start Screen Logic ---
 const btnPvE = document.getElementById('btn-pve');
@@ -36,11 +37,14 @@ socket.on('gameStart', (initialState) => {
     renderer.setPlayerInfo(initialState.players, socket.id);
     
     renderer.initMap(initialState.grid);
-    renderer.updateGameState(initialState.grid); // Initial color pass
+    renderer.updateGameState(initialState.grid); 
     renderer.animate();
     
+    // Initialize UI Stats immediately
+    uiManager.update(initialState, socket.id);
+
     // Initialize Input
-    new InputManager(renderer.camera, renderer.scene, socket);
+    inputManager = new InputManager(renderer, socket);
 });
 
 socket.on('stateUpdate', (newState) => {
@@ -51,6 +55,7 @@ socket.on('stateUpdate', (newState) => {
 socket.on('error', (err) => {
     console.error("Game Error:", err);
     uiManager.showError(err);
+    if(inputManager) inputManager.resetSelection(); // Reset if move failed
 });
 
 socket.on('gameOver', (data) => {

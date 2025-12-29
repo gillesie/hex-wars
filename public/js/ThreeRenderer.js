@@ -1,7 +1,7 @@
 export class ThreeRenderer {
     constructor(containerId) {
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x111115); // Darker elite bg
+        this.scene.background = new THREE.Color(0x111115); 
 
         this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
         this.camera.position.set(0, 18, 12);
@@ -17,22 +17,28 @@ export class ThreeRenderer {
         dirLight.position.set(10, 20, 10);
         dirLight.castShadow = true;
         this.scene.add(dirLight);
-        this.scene.add(new THREE.AmbientLight(0x404050)); // Cool ambient
+        this.scene.add(new THREE.AmbientLight(0x404050)); 
 
         this.hexMeshes = new Map();
-        this.playerColors = {}; // Will map ID -> HexColor
+        this.playerColors = {}; 
+        
+        // Selection Indicator (A glowing ring)
+        const selectorGeo = new THREE.TorusGeometry(1, 0.1, 8, 6);
+        const selectorMat = new THREE.MeshBasicMaterial({ color: 0xffff00, transparent: true, opacity: 0.8 });
+        this.selectorMesh = new THREE.Mesh(selectorGeo, selectorMat);
+        this.selectorMesh.rotation.x = Math.PI / 2;
+        this.selectorMesh.visible = false; // Hidden by default
+        this.scene.add(this.selectorMesh);
     }
 
     initMap(gridData) {
         const hexGeometry = new THREE.CylinderGeometry(1, 1, 0.5, 6);
         const materialNeutral = new THREE.MeshLambertMaterial({ color: 0x444444 });
 
-        // Clear existing
         this.hexMeshes.forEach(m => this.scene.remove(m));
         this.hexMeshes.clear();
 
         gridData.forEach(tile => {
-            // Nexus tiles are taller
             const isNexus = tile.type === 'nexus';
             const geometry = isNexus 
                 ? new THREE.CylinderGeometry(1, 1.2, 2.0, 6) 
@@ -55,10 +61,23 @@ export class ThreeRenderer {
     }
 
     setPlayerInfo(players, myId) {
-        // Map player IDs to Colors based on 'side'
         Object.values(players).forEach(p => {
             this.playerColors[p.id] = (p.side === 'Blue') ? 0x0088ff : 0xff4444;
         });
+    }
+
+    highlightHex(tileData) {
+        if (!tileData) {
+            this.selectorMesh.visible = false;
+            return;
+        }
+
+        const size = 1.1;
+        const x = size * 1.5 * tileData.q;
+        const z = size * Math.sqrt(3) * (tileData.r + tileData.q / 2);
+        
+        this.selectorMesh.position.set(x, 1.0, z);
+        this.selectorMesh.visible = true;
     }
 
     updateGameState(gridData) {
@@ -66,24 +85,19 @@ export class ThreeRenderer {
             const mesh = this.hexMeshes.get(tile.id);
             if (!mesh) return;
 
-            let color = 0x444444; // Neutral Grey
+            let color = 0x444444; 
 
-            // 1. Determine Tile Ownership Color
             if (tile.owner && this.playerColors[tile.owner]) {
                 color = this.playerColors[tile.owner];
             }
 
-            // 2. Highlight Units
             if (tile.unit) {
-                // Brighten the color if unit exists, or make it White for generic unit visibility
-                // Ideally units should be separate meshes, but for now we color the tile
                 mesh.material.emissive.setHex(color);
                 mesh.material.emissiveIntensity = 0.5;
             } else {
                 mesh.material.emissive.setHex(0x000000);
             }
 
-            // 3. Special Nexus coloring
             if (tile.type === 'nexus') {
                 mesh.material.emissiveIntensity = 0.8;
             }

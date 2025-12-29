@@ -1,9 +1,6 @@
-// Assumes Three.js is available globally or imported
-
 export class InputManager {
-    constructor(camera, scene, socket) {
-        this.camera = camera;
-        this.scene = scene;
+    constructor(renderer, socket) {
+        this.renderer = renderer; // Store whole renderer to access camera, scene, and helper methods
         this.socket = socket;
         this.raycaster = new THREE.Raycaster();
         this.mouse = new THREE.Vector2();
@@ -18,37 +15,35 @@ export class InputManager {
     }
 
     onMouseClick(event) {
-        // Normalize mouse coordinates (-1 to +1)
         this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
         this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-        // Cast ray
-        this.raycaster.setFromCamera(this.mouse, this.camera);
+        this.raycaster.setFromCamera(this.mouse, this.renderer.camera);
         
-        // Intersect against all children in the scene (meshes)
-        const intersects = this.raycaster.intersectObjects(this.scene.children);
+        // Intersect against scene children (meshes)
+        const intersects = this.raycaster.intersectObjects(this.renderer.scene.children);
 
         if (intersects.length > 0) {
-            // Find the first object that has user data (our hexes)
             const hit = intersects.find(obj => obj.object.userData && obj.object.userData.q !== undefined);
             
             if (hit) {
                 const hexData = hit.object.userData;
                 this.handleHexInteraction(hexData);
             }
+        } else {
+            // Clicked background: Deselect
+            this.resetSelection();
         }
     }
 
     handleHexInteraction(hexData) {
-        console.log("Clicked hex:", hexData);
-
         if (!this.selectedHex) {
-            // First click: Select
+            // 1. Select Unit
             this.selectedHex = hexData;
+            this.renderer.highlightHex(hexData); // Visual Feedback
             console.log("Selected:", this.selectedHex);
-            // Visual feedback could be added here (highlight selection)
         } else {
-            // Second click: Action (Move)
+            // 2. Action: Move to target
             console.log("Action: Move to", hexData);
             
             this.socket.emit('submitAction', {
@@ -57,8 +52,12 @@ export class InputManager {
                 to: hexData
             });
 
-            // Deselect
-            this.selectedHex = null;
+            this.resetSelection();
         }
+    }
+
+    resetSelection() {
+        this.selectedHex = null;
+        this.renderer.highlightHex(null); // Hide highlight
     }
 }
