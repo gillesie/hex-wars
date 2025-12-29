@@ -30,11 +30,9 @@ export class InputManager {
         const intersects = this.raycaster.intersectObjects(this.renderer.scene.children);
 
         if (intersects.length > 0) {
-            // Ensure we hit a valid tile mesh
             const hit = intersects.find(obj => obj.object.userData && obj.object.userData.q !== undefined);
             
             if (hit) {
-                // Fetch the logical state (owner, unit) from Renderer's cache
                 const tileData = this.renderer.getTileData(hit.object.userData.q, hit.object.userData.r);
                 if (tileData) {
                     this.handleHexInteraction(tileData);
@@ -46,19 +44,17 @@ export class InputManager {
     }
 
     handleHexInteraction(tile) {
-        // 1. If nothing is selected, select the clicked tile
         if (!this.selectedHex) {
             this.selectTile(tile);
             return;
         }
 
-        // 2. If clicking the SAME tile, deselect it
         if (this.selectedHex.q === tile.q && this.selectedHex.r === tile.r) {
             this.resetSelection();
             return;
         }
 
-        // 3. If a different tile is clicked, attempt an ACTION (Move/Attack)
+        // Action: Move/Attack
         this.socket.emit('submitAction', {
             type: 'MOVE',
             from: { q: this.selectedHex.q, r: this.selectedHex.r },
@@ -72,11 +68,27 @@ export class InputManager {
         this.selectedHex = tile;
         this.renderer.highlightHex(tile);
         this.uiManager.showHexActions(tile);
+
+        // SHOW ARROWS if tile has a unit (My unit)
+        // Note: checking ownership locally for UI convenience, server validates later
+        if (tile.unit && tile.unit.owner === this.uiManager.myState.id) {
+            const neighbors = this.getNeighborCoords(tile.q, tile.r);
+            this.renderer.showArrows(tile, neighbors);
+        }
+    }
+
+    getNeighborCoords(q, r) {
+        // Hex Neighbor Offsets (Axial)
+        const directions = [
+            [1, 0], [1, -1], [0, -1],
+            [-1, 0], [-1, 1], [0, 1]
+        ];
+        return directions.map(d => ({ q: q + d[0], r: r + d[1] }));
     }
 
     resetSelection() {
         this.selectedHex = null;
-        this.renderer.highlightHex(null);
+        this.renderer.highlightHex(null); // This also clears arrows
         this.uiManager.hideActionPanel();
     }
 }

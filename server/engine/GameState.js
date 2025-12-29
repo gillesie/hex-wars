@@ -4,7 +4,6 @@ const Unit = require('./Unit');
 class GameState {
     constructor(matchId, p1Id, p2Id) {
         this.matchId = matchId;
-        // Initialize Players with starting resources
         this.players = {
             [p1Id]: { id: p1Id, side: 'Blue', essence: 100, nexusHealth: 1000, income: 10, units: [] },
             [p2Id]: { id: p2Id, side: 'Red', essence: 100, nexusHealth: 1000, income: 10, units: [] }
@@ -17,7 +16,6 @@ class GameState {
     }
 
     initBoard(p1Id, p2Id) {
-        // Player 1 Start
         const start1 = this.grid.getTile(0, 4);
         if (start1) {
             start1.owner = p1Id;
@@ -25,7 +23,6 @@ class GameState {
             start1.unit = new Unit('Vanguard', p1Id);
         }
 
-        // Player 2 Start
         const start2 = this.grid.getTile(0, -4);
         if (start2) {
             start2.owner = p2Id;
@@ -35,35 +32,33 @@ class GameState {
     }
 
     tick() {
-        // 1. Calculate Supply Chains (Connectivity) [Readme: The Nexus Link]
+        // 1. Calculate Supply Chains
         this.calculateSupplyChains();
 
+        // 2. Reset Unit Movement (CRITICAL FIX)
+        for (let tile of this.grid.tiles.values()) {
+            if (tile.unit) {
+                tile.unit.movedThisTurn = false;
+            }
+        }
+
         Object.values(this.players).forEach(player => {
-            let currentIncome = player.income; // Base income (10)
+            let currentIncome = player.income;
             
-            // 2. Calculate Structure Income & Siphon Logic
             for (let tile of this.grid.tiles.values()) {
-                // Monoliths only generate income if connected (not dormant)
                 if (tile.owner === player.id && tile.type === 'monolith' && !tile.dormant) {
                     let tileIncome = 5;
-
-                    // [Readme: Siphon] Steal 50% of output if enemy Siphon is on top
+                    // Siphon Logic
                     if (tile.unit && tile.unit.type === 'Siphon' && tile.unit.owner !== player.id) {
-                        tileIncome = Math.floor(tileIncome / 2); // Reduced to 2
-                        
-                        // Give stolen essence to the Siphon's owner
+                        tileIncome = Math.floor(tileIncome / 2);
                         const thief = this.players[tile.unit.owner];
-                        if (thief) {
-                            thief.essence += (5 - tileIncome);
-                        }
+                        if (thief) thief.essence += (5 - tileIncome);
                     }
-
                     currentIncome += tileIncome; 
                 }
             }
 
-            // 3. Calculate Unit Upkeep [Readme: Maintenance Tax]
-            // We iterate the grid to find all units owned by this player
+            // Upkeep
             let totalUpkeep = 0;
             for (let tile of this.grid.tiles.values()) {
                 if (tile.unit && tile.unit.owner === player.id) {
@@ -71,24 +66,17 @@ class GameState {
                 }
             }
 
-            // Apply Net Income
             player.essence += (currentIncome - totalUpkeep);
-            
-            // Prevent negative essence (optional, but prevents infinite debt)
             if (player.essence < 0) player.essence = 0;
         });
     }
 
-    // New Helper: Check which tiles are connected to a Nexus
     calculateSupplyChains() {
-        // Reset dormant state for all owned tiles
         for (let tile of this.grid.tiles.values()) {
             if (tile.owner) tile.dormant = true;
         }
 
-        // For each player, perform BFS from their Nexus
         Object.values(this.players).forEach(player => {
-            // Find Nexus
             let nexusTile = null;
             for (let tile of this.grid.tiles.values()) {
                 if (tile.owner === player.id && tile.type === 'nexus') {
@@ -97,9 +85,8 @@ class GameState {
                 }
             }
 
-            if (!nexusTile) return; // Player has no Nexus
+            if (!nexusTile) return;
 
-            // BFS Traversal
             const queue = [nexusTile];
             const visited = new Set();
             visited.add(nexusTile.id);
@@ -146,8 +133,6 @@ class GameState {
         if (tile.owner !== playerId) return { error: "You do not own this tile" };
         if (tile.unit) return { error: "Tile is occupied" };
         if (tile.type !== 'empty') return { error: "Already built here" };
-        
-        // [Readme: Decoupling] Cannot build on dormant tiles
         if (tile.dormant) return { error: "Sector disconnected from Nexus network" };
 
         let cost = 0;
@@ -190,12 +175,14 @@ class GameState {
         if (!startTile.unit || startTile.unit.owner !== playerId) {
             return { error: "Not your unit" };
         }
+
+        if (startTile.unit.movedThisTurn) {
+            return { error: "Unit has already moved this turn" };
+        }
         
-        // Range Check (Basic 1 tile check, can be expanded for Range units later)
         const isNeighbor = this.grid.getNeighbors(from.q, from.r).includes(endTile);
         if (!isNeighbor) return { error: "Target not adjacent" };
 
-        // Combat Interaction
         if (endTile.unit) {
             if (endTile.unit.owner !== playerId) {
                 return this.resolveCombat(startTile, endTile);
@@ -204,15 +191,14 @@ class GameState {
             }
         }
         
-        // Move Interaction
         return this.moveUnit(playerId, startTile, endTile);
     }
 
     resolveCombat(attackerTile, defenderTile) {
         const attacker = attackerTile.unit;
         const defender = defenderTile.unit;
+        attacker.movedThisTurn = true; // Combat counts as move
 
-        // [Readme: Vanguard Phalanx]
         let defenseBonus = 0;
         if (defender.type === 'Vanguard') {
             const neighbors = this.grid.getNeighbors(defenderTile.q, defenderTile.r);
@@ -224,7 +210,7 @@ class GameState {
         defender.hp -= damage;
 
         if (defender.hp <= 0) {
-            defenderTile.unit = null; // Unit destroyed
+            defenderTile.unit = null;
             return { success: true, update: { type: 'COMBAT_KILL', target: defenderTile } };
         }
 
@@ -236,11 +222,8 @@ class GameState {
         startTile.unit = null;
         endTile.unit.movedThisTurn = true; 
         
-        // Capture Mechanic
         if (endTile.owner !== playerId && endTile.type !== 'nexus') {
             endTile.owner = playerId; 
-            
-            // Looting: Reset structure when captured
             if (endTile.type === 'monolith' || endTile.type === 'bastion') {
                 endTile.type = 'empty'; 
                 this.players[playerId].essence += 25; 

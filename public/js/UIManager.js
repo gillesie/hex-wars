@@ -45,13 +45,49 @@ export class UIManager {
         info.innerText = `Owner: ${tileData.owner ? (isMine ? "YOU" : "ENEMY") : "NEUTRAL"} | Type: ${tileData.type}`;
         this.panelContent.appendChild(info);
 
-        // 2. Unit Recruitment (Only at Nexus)
+        // 2. Unit Controls (Issue #5)
+        if (tileData.unit) {
+            const unitPanel = document.createElement('div');
+            unitPanel.style.border = '1px solid #00dfff';
+            unitPanel.style.padding = '5px';
+            unitPanel.style.marginBottom = '10px';
+            unitPanel.style.background = 'rgba(0, 223, 255, 0.1)';
+
+            const unitHeader = document.createElement('div');
+            unitHeader.style.fontWeight = 'bold';
+            unitHeader.style.color = '#00dfff';
+            unitHeader.innerText = `${tileData.unit.type.toUpperCase()}`;
+            unitPanel.appendChild(unitHeader);
+
+            const unitStats = document.createElement('div');
+            unitStats.style.fontSize = '0.8rem';
+            unitStats.innerHTML = `HP: ${tileData.unit.hp} <br> Upkeep: ${tileData.unit.upkeep}`;
+            unitPanel.appendChild(unitStats);
+
+            const moveStatus = document.createElement('div');
+            moveStatus.style.marginTop = '5px';
+            if (tileData.unit.movedThisTurn) {
+                moveStatus.style.color = '#ff4444';
+                moveStatus.innerText = "STATUS: EXHAUSTED (Moved)";
+            } else if (isMine) {
+                moveStatus.style.color = '#00ff00';
+                moveStatus.innerText = "STATUS: READY (Select arrow to move)";
+            } else {
+                moveStatus.style.color = '#ffaa00';
+                moveStatus.innerText = "STATUS: HOSTILE";
+            }
+            unitPanel.appendChild(moveStatus);
+
+            this.panelContent.appendChild(unitPanel);
+        }
+
+        // 3. Recruitment
         if (isMine && isNexus) {
-            // Check if Nexus is occupied
             if (tileData.unit) {
                 const warn = document.createElement('div');
                 warn.style.color = 'orange';
-                warn.innerText = "NEXUS OCCUPIED: Move unit to recruit.";
+                warn.style.fontSize = '0.8rem';
+                warn.innerText = "Move unit to recruit new forces.";
                 this.panelContent.appendChild(warn);
             } else {
                 this.createBtn("Recruit Vanguard (100)", 100, () => {
@@ -65,7 +101,7 @@ export class UIManager {
             }
         }
 
-        // 3. Build Structures (Only if mine and empty)
+        // 4. Build Structures
         if (isMine && isEmpty) {
             this.createBtn("Build Monolith (50)", 50, () => {
                 this.socket.emit('submitAction', { type: 'BUILD', structure: 'monolith', q: tileData.q, r: tileData.r });
@@ -76,14 +112,6 @@ export class UIManager {
                 this.socket.emit('submitAction', { type: 'BUILD', structure: 'bastion', q: tileData.q, r: tileData.r });
                 this.hideActionPanel();
             });
-        }
-        
-        // 4. Unit Info
-        if (tileData.unit) {
-            const unitInfo = document.createElement('div');
-            unitInfo.style.color = '#00dfff';
-            unitInfo.innerText = `UNIT: ${tileData.unit.type} (HP: ${tileData.unit.hp})`;
-            this.panelContent.appendChild(unitInfo);
         }
     }
 
@@ -96,7 +124,7 @@ export class UIManager {
         
         if (this.myState.essence < cost) {
             btn.disabled = true;
-            btn.innerText += " [INSUFFICIENT ESSENCE]";
+            btn.innerText += " [LOCKED]";
         }
 
         btn.onclick = callback;
