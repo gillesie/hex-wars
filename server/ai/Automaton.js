@@ -15,23 +15,33 @@ class Automaton {
             }
         }
 
-        if (myUnits.length === 0) return; // No units to move
+        if (myUnits.length === 0) return;
 
-        // 2. Simple Logic: Pick a random unit and move it to a random neighbor
-        const randomTile = myUnits[Math.floor(Math.random() * myUnits.length)];
-        const neighbors = grid.getNeighbors(randomTile.q, randomTile.r);
+        // 2. Determine Action: Attack -> Expand -> Random
+        const unitTile = myUnits[Math.floor(Math.random() * myUnits.length)];
+        const neighbors = grid.getNeighbors(unitTile.q, unitTile.r);
         
-        // Filter valid moves (empty tiles)
-        const validMoves = neighbors.filter(n => !n.unit);
+        // Check for Attack opportunities
+        const enemies = neighbors.filter(n => n.unit && n.unit.owner !== this.id);
+        if (enemies.length > 0) {
+            const target = enemies[0];
+            this.game.processAction(this.id, {
+                type: 'MOVE',
+                from: { q: unitTile.q, r: unitTile.r },
+                to: { q: target.q, r: target.r }
+            });
+            return;
+        }
 
+        // Move to valid empty tile
+        const validMoves = neighbors.filter(n => !n.unit);
         if (validMoves.length > 0) {
             const target = validMoves[Math.floor(Math.random() * validMoves.length)];
-            
-            // Execute the move directly via the game state
-            this.game.moveUnit(this.id, 
-                { q: randomTile.q, r: randomTile.r }, 
-                { q: target.q, r: target.r }
-            );
+            this.game.processAction(this.id, {
+                type: 'MOVE',
+                from: { q: unitTile.q, r: unitTile.r },
+                to: { q: target.q, r: target.r }
+            });
         }
     }
 }
