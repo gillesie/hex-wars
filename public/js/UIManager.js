@@ -1,6 +1,6 @@
 export class UIManager {
     constructor(socket) {
-        this.socket = socket; // Need socket to emit build commands
+        this.socket = socket; 
         this.statusEl = document.getElementById('status');
         this.essenceEl = document.getElementById('essence-display');
         this.nexusEl = document.getElementById('nexus-display');
@@ -8,7 +8,6 @@ export class UIManager {
         this.startScreen = document.getElementById('start-screen');
         this.notificationContainer = document.getElementById('notification-container');
         
-        // Action Panel
         this.actionPanel = document.getElementById('action-panel');
         this.panelTitle = document.getElementById('panel-title');
         this.panelContent = document.getElementById('panel-content');
@@ -29,17 +28,16 @@ export class UIManager {
         }
     }
     
-    // Called by InputManager when a hex is clicked
     showHexActions(tileData) {
         this.actionPanel.style.display = 'flex';
         this.panelTitle.innerText = `SECTOR [${tileData.q}, ${tileData.r}]`;
-        this.panelContent.innerHTML = ''; // Clear previous
+        this.panelContent.innerHTML = ''; 
 
-        // 1. Logic: Who owns this?
         const isMine = tileData.owner === this.myState.id;
         const isEmpty = !tileData.unit && tileData.type === 'empty';
+        const isNexus = tileData.type === 'nexus';
 
-        // 2. Info Text
+        // 1. Info Text
         const info = document.createElement('div');
         info.style.marginBottom = '10px';
         info.style.fontSize = '0.8rem';
@@ -47,7 +45,27 @@ export class UIManager {
         info.innerText = `Owner: ${tileData.owner ? (isMine ? "YOU" : "ENEMY") : "NEUTRAL"} | Type: ${tileData.type}`;
         this.panelContent.appendChild(info);
 
-        // 3. Build Options (Only if mine and empty)
+        // 2. Unit Recruitment (Only at Nexus)
+        if (isMine && isNexus) {
+            // Check if Nexus is occupied
+            if (tileData.unit) {
+                const warn = document.createElement('div');
+                warn.style.color = 'orange';
+                warn.innerText = "NEXUS OCCUPIED: Move unit to recruit.";
+                this.panelContent.appendChild(warn);
+            } else {
+                this.createBtn("Recruit Vanguard (100)", 100, () => {
+                     this.socket.emit('submitAction', { type: 'RECRUIT', unitType: 'Vanguard', q: tileData.q, r: tileData.r });
+                     this.hideActionPanel();
+                });
+                this.createBtn("Recruit Siphon (150)", 150, () => {
+                    this.socket.emit('submitAction', { type: 'RECRUIT', unitType: 'Siphon', q: tileData.q, r: tileData.r });
+                    this.hideActionPanel();
+               });
+            }
+        }
+
+        // 3. Build Structures (Only if mine and empty)
         if (isMine && isEmpty) {
             this.createBtn("Build Monolith (50)", 50, () => {
                 this.socket.emit('submitAction', { type: 'BUILD', structure: 'monolith', q: tileData.q, r: tileData.r });

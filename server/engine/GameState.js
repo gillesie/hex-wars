@@ -54,6 +54,8 @@ class GameState {
             return this.handleUnitAction(playerId, action.from, action.to);
         } else if (action.type === 'BUILD') {
             return this.buildStructure(playerId, action);
+        } else if (action.type === 'RECRUIT') { // NEW ACTION
+            return this.recruitUnit(playerId, action);
         }
 
         return { success: true };
@@ -81,6 +83,26 @@ class GameState {
         return { success: true };
     }
 
+    // NEW: Spawns a unit at the Nexus
+    recruitUnit(playerId, action) {
+        const { unitType, q, r } = action;
+        const tile = this.grid.getTile(q, r);
+        const player = this.players[playerId];
+
+        if (!tile) return { error: "Invalid tile" };
+        if (tile.owner !== playerId) return { error: "Not your tile" };
+        if (tile.type !== 'nexus') return { error: "Units must be recruited at Nexus" };
+        if (tile.unit) return { error: "Nexus is occupied (Move unit first)" };
+
+        const stats = Unit.getStats(unitType);
+        if (player.essence < stats.cost) return { error: "Insufficient Essence" };
+
+        player.essence -= stats.cost;
+        tile.unit = new Unit(unitType, playerId);
+
+        return { success: true };
+    }
+
     // NEW: Handles Movement AND Combat
     handleUnitAction(playerId, from, to) {
         const startTile = this.grid.getTile(from.q, from.r);
@@ -92,7 +114,7 @@ class GameState {
             return { error: "Not your unit" };
         }
         
-        // Range Check (Basic Neighbor check)
+        // Range Check
         const isNeighbor = this.grid.getNeighbors(from.q, from.r).includes(endTile);
         if (!isNeighbor) return { error: "Target not adjacent" };
 
@@ -113,7 +135,7 @@ class GameState {
         const attacker = attackerTile.unit;
         const defender = defenderTile.unit;
 
-        // Apply Phalanx Buff (Vanguard Defense Bonus from Readme)
+        // Apply Phalanx Buff
         let defenseBonus = 0;
         if (defender.type === 'Vanguard') {
             const neighbors = this.grid.getNeighbors(defenderTile.q, defenderTile.r);
@@ -121,12 +143,10 @@ class GameState {
             defenseBonus = allyVanguards.length * 5; 
         }
 
-        // Damage Calculation
         const damage = Math.max(1, attacker.attack - defenseBonus);
         defender.hp -= damage;
 
         if (defender.hp <= 0) {
-            // Unit Destroyed
             defenderTile.unit = null;
             return { success: true, update: { type: 'COMBAT_KILL', target: defenderTile } };
         }
@@ -139,11 +159,9 @@ class GameState {
         startTile.unit = null;
         endTile.unit.movedThisTurn = true; 
         
-        // Capture Mechanic: Moving to enemy/neutral tile flips ownership
+        // Capture Mechanic
         if (endTile.owner !== playerId && endTile.type !== 'nexus') {
             endTile.owner = playerId; 
-            
-            // Pillage structures
             if (endTile.type === 'monolith' || endTile.type === 'bastion') {
                 endTile.type = 'empty'; 
                 this.players[playerId].essence += 25; 

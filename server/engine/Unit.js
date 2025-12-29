@@ -15,15 +15,15 @@ class Unit {
     static getStats(type) {
         switch (type) {
             case 'Vanguard':
-                return { hp: 100, attack: 20, range: 1, upkeep: 5 };
+                return { hp: 100, attack: 20, range: 1, upkeep: 5, cost: 100 };
             case 'Siphon':
-                return { hp: 40, attack: 10, range: 1, upkeep: 3 }; // Stealth unit
+                return { hp: 40, attack: 10, range: 1, upkeep: 3, cost: 150 }; 
             case 'Siege-Engine':
-                return { hp: 80, attack: 50, range: 2, upkeep: 10 };
+                return { hp: 80, attack: 50, range: 2, upkeep: 10, cost: 300 };
             case 'Overseer':
-                return { hp: 60, attack: 0, range: 3, upkeep: 8 }; // Support
+                return { hp: 60, attack: 0, range: 3, upkeep: 8, cost: 200 }; 
             default:
-                return { hp: 10, attack: 1, range: 1, upkeep: 1 };
+                return { hp: 10, attack: 1, range: 1, upkeep: 1, cost: 10 };
         }
     }
 }
