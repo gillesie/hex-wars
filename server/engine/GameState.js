@@ -1,4 +1,5 @@
 const HexGrid = require('./HexGrid');
+const Unit = require('./Unit'); // Required to spawn starting units
 
 class GameState {
     constructor(matchId, p1Id, p2Id) {
@@ -9,11 +10,31 @@ class GameState {
         };
         this.grid = new HexGrid(4); // Map radius 4
         this.turn = 0;
-        this.status = 'active'; // 'active', 'finished'
+        this.status = 'active'; 
+        
+        // Initialize Starting Positions (Nexus + 1 Unit)
+        this.initBoard(p1Id, p2Id);
+    }
+
+    initBoard(p1Id, p2Id) {
+        // Player 1 (Blue) - South
+        const start1 = this.grid.getTile(0, 4);
+        if (start1) {
+            start1.owner = p1Id;
+            start1.type = 'nexus';
+            start1.unit = new Unit('Vanguard', p1Id);
+        }
+
+        // Player 2 (Red) - North
+        const start2 = this.grid.getTile(0, -4);
+        if (start2) {
+            start2.owner = p2Id;
+            start2.type = 'nexus';
+            start2.unit = new Unit('Vanguard', p2Id);
+        }
     }
 
     processAction(playerId, action) {
-        // action example: { type: 'MOVE', from: {q,r}, to: {q,r} }
         if (this.status !== 'active') return { error: "Game over" };
 
         const player = this.players[playerId];
@@ -22,7 +43,6 @@ class GameState {
         if (action.type === 'MOVE') {
             return this.moveUnit(playerId, action.from, action.to);
         }
-        // Add more actions (BUILD, ATTACK) here
         return { success: true };
     }
 
@@ -31,10 +51,14 @@ class GameState {
         const endTile = this.grid.getTile(to.q, to.r);
 
         if (!startTile || !endTile) return { error: "Invalid coordinates" };
-        if (!startTile.unit) return { error: "No unit to move" };
+        
+        // Ownership Check
+        if (!startTile.unit || startTile.unit.owner !== playerId) {
+            return { error: "Not your unit" };
+        }
+        
         if (endTile.unit) return { error: "Destination occupied" };
         
-        // Basic adjacent movement check (can be expanded for pathfinding)
         const isNeighbor = this.grid.getNeighbors(from.q, from.r).includes(endTile);
         if (!isNeighbor) return { error: "Tile not adjacent" };
 
@@ -42,10 +66,14 @@ class GameState {
         endTile.unit = startTile.unit;
         startTile.unit = null;
         
+        // Update Owner of tile if moved to neutral/enemy (Simple capture logic)
+        if (endTile.owner !== playerId && endTile.type !== 'nexus') {
+            endTile.owner = playerId; 
+        }
+        
         return { success: true, update: { type: 'UNIT_MOVED', from, to, unit: endTile.unit } };
     }
 
-    // Returns a sanitized state object for the client (hiding Fog of War info if needed)
     serialize() {
         return {
             matchId: this.matchId,

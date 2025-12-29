@@ -1,35 +1,50 @@
 export class UIManager {
     constructor() {
         this.statusEl = document.getElementById('status');
-        this.essenceEl = document.createElement('div');
-        this.nexusEl = document.createElement('div');
-        
-        this.setupHUD();
+        this.essenceEl = document.getElementById('essence-display');
+        this.nexusEl = document.getElementById('nexus-display');
+        this.uiLayer = document.getElementById('ui-layer');
+        this.startScreen = document.getElementById('start-screen');
+        this.notificationContainer = document.getElementById('notification-container');
     }
 
-    setupHUD() {
-        const uiLayer = document.getElementById('ui-layer');
-        
-        this.essenceEl.id = 'essence-display';
-        this.essenceEl.innerText = 'Essence: 0';
-        uiLayer.appendChild(this.essenceEl);
-
-        this.nexusEl.id = 'nexus-display';
-        this.nexusEl.innerText = 'Nexus Health: 1000';
-        uiLayer.appendChild(this.nexusEl);
+    hideStartScreen() {
+        this.startScreen.style.display = 'none';
+        this.uiLayer.style.display = 'block';
     }
 
     update(gameState, myArrayId) {
-        // Update Status text based on game phase
-        // Update Player resources
         if (gameState.players && gameState.players[myArrayId]) {
             const me = gameState.players[myArrayId];
-            this.essenceEl.innerText = `Essence: ${me.essence}`;
-            this.nexusEl.innerText = `Nexus: ${me.nexusHealth}`;
+            this.essenceEl.innerText = `ESSENCE: ${Math.floor(me.essence)}`;
+            this.nexusEl.innerText = `NEXUS: ${me.nexusHealth}`;
         }
     }
     
     setStatus(msg) {
         this.statusEl.innerText = msg;
+    }
+
+    showError(msg) {
+        this.showNotification(msg, 'error');
+    }
+
+    showNotification(msg, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.innerText = msg;
+        
+        if (type === 'error') {
+            toast.style.borderLeftColor = '#ff0000';
+            toast.style.background = 'rgba(50, 0, 0, 0.9)';
+        }
+
+        this.notificationContainer.appendChild(toast);
+
+        // Remove after 3 seconds
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            setTimeout(() => toast.remove(), 500);
+        }, 3000);
     }
 }
