@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Hex-Sovereign Web</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        #ui-layer { position: absolute; top: 0; left: 0; color: white; padding: 10px; pointer-events: none; }
+    </style>
+</head>
+<body>
+    <div id="ui-layer">
+        <h1>Hex-Sovereign</h1>
+        <div id="status">Waiting for opponent...</div>
+    </div>
+    <div id="game-container"></div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
