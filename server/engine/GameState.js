@@ -1,7 +1,3 @@
-{
-type: uploaded file
-fileName: gillesie/hex-wars/hex-wars-8d49bc5573d50850e17a73c2f5f97fc0cf483f1f/server/engine/GameState.js
-fullContent:
 const HexGrid = require('./HexGrid');
 const Unit = require('./Unit'); 
 
@@ -264,4 +260,3 @@ class GameState {
 }
 
 module.exports = GameState;
-}

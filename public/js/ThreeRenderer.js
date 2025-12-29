@@ -1,7 +1,3 @@
-{
-type: uploaded file
-fileName: gillesie/hex-wars/hex-wars-8d49bc5573d50850e17a73c2f5f97fc0cf483f1f/public/js/ThreeRenderer.js
-fullContent:
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
@@ -166,4 +162,46 @@ export class ThreeRenderer {
                 let geo;
                 switch(tile.unit.type) {
                     case 'Vanguard': 
-                        geo = new THREE.BoxGeometry(0.
+                        geo = new THREE.BoxGeometry(0.8, 0.8, 0.8); 
+                        break;
+                    case 'Siphon':
+                        geo = new THREE.ConeGeometry(0.4, 1, 4); 
+                        break;
+                    case 'Siege-Engine':
+                        geo = new THREE.CylinderGeometry(0.4, 0.4, 0.5, 8);
+                        break;
+                    default:
+                        geo = new THREE.SphereGeometry(0.5, 16, 16);
+                }
+                
+                const mat = new THREE.MeshStandardMaterial({ color: ownerColor, roughness: 0.3 });
+                unitMesh = new THREE.Mesh(geo, mat);
+                
+                const size = 1.1; 
+                const x = size * 1.5 * tile.q;
+                const z = size * Math.sqrt(3) * (tile.r + tile.q / 2);
+                
+                // Position unit on top of tile
+                let yOffset = 0.75;
+                if (tile.type === 'monolith') yOffset = 1.0; 
+                if (tile.type === 'nexus') yOffset = 1.5;
+
+                unitMesh.position.set(x, yOffset, z);
+                unitMesh.castShadow = true;
+                
+                this.scene.add(unitMesh);
+                this.unitMeshes.set(tile.id, unitMesh);
+            } else {
+                // Ensure position updates if terrain changes (e.g. built Monolith under unit)
+                // And simple animations could go here
+                unitMesh.material.color.setHex(ownerColor);
+            }
+        }
+    }
+
+    animate() {
+        requestAnimationFrame(() => this.animate());
+        this.controls.update(); // Update controls
+        this.renderer.render(this.scene, this.camera);
+    }
+}
